@@ -1,0 +1,6 @@
+---
+- include_tasks: ensure_directory_permission.yml
+- include_tasks: setup.yml
+- include_tasks: execute_composer.yml
+  vars:
+    is_ansistrano: no

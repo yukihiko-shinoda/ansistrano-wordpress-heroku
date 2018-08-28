@@ -1,0 +1,10 @@
+---
+- hosts: default
+  roles:
+    - hooks
+  handlers:
+    - name: restart apache
+      service:
+        name: httpd
+        state: '{{ "stopped" if is_container is defined and is_container else "restarted" }}'
+      become: yes

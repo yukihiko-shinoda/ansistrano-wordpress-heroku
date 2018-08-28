@@ -1,0 +1,63 @@
+---
+- name: ANSISTRANO | HOOKS | Execute composer
+  composer:
+    command: update
+    working_dir: "{{ roles_common_document_root }}"
+    prefer_dist: yes
+    optimize_autoloader: "{{ composer_optimize_autoloader }}"
+    no_dev: "{{ composer_no_dev }}"
+
+- name: ANSISTRANO | HOOKS | Get current DocumentRoot
+  shell: grep "^DocumentRoot" /etc/httpd/conf/httpd.conf | awk '{print $2}' | sed -e 's/^"//' -e 's/"$//'
+  become: yes
+  ignore_errors: yes
+  register: current_document_root
+
+- name: ANSISTRANO | HOOKS | Replace document root for Apache
+  replace:
+    path: /etc/httpd/conf/httpd.conf
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  with_items:
+    - regexp: ^DocumentRoot\s+"{{ current_document_root.stdout }}"
+      replace: DocumentRoot "{{ roles_common_document_root }}"
+    - regexp: ^<Directory\s"{{ current_document_root.stdout }}">$
+      replace: <Directory "{{ roles_common_document_root }}">
+  become: yes
+  notify: restart apache
+
+- name: ANSISTRANO | HOOKS | Check whether Samba config for workspace exists or not
+  stat:
+    path: /etc/httpd/conf.d/php-fpm.conf
+  register: stat_acphe_config_php_fpm
+
+- name: ANSISTRANO | HOOKS | Replace workspace on php-fpm config
+  replace:
+    path: /etc/httpd/conf.d/php-fpm.conf
+    regexp: ProxyPassMatch\s\^/\(\.\*\\\.php\(/\.\*\)\?\)\$\sfcgi://127\.0\.0\.1\:9000{{ current_document_root.stdout }}/\$1
+    replace: ProxyPassMatch ^/(.*\.php(/.*)?)$ fcgi://127.0.0.1:9000{{ roles_common_document_root }}/$1
+  become: yes
+  notify: restart apache
+  when: stat_acphe_config_php_fpm.stat.exists
+
+- name: ANSISTRANO | HOOKS | Comment out function of BuildPack to call composer
+  lineinfile:
+    path: '{{ roles_common_document_root }}/vendor/heroku/heroku-buildpack-php/bin/heroku-php-apache2'
+    insertbefore: '{{ item.insertbefore }}'
+    line: '{{ item.line }}'
+  with_items:
+    - insertbefore: ^composer\(\)\s{$
+      line: << "#__CO__"
+    - insertbefore: ^COMPOSER_VENDOR_DIR=.*
+      line: '#__CO__'
+
+- name: ANSISTRANO | HOOKS | Set listen user and group on php-fpm config of BuildPack to connect from Apache
+  replace:
+    path: '{{ roles_common_document_root }}/vendor/heroku/heroku-buildpack-php/conf/php/php-fpm.conf'
+    regexp: '{{ item.regexp }}'
+    replace: '{{ item.replace }}'
+  with_items:
+    - regexp: ^;listen\.owner\s=\snobody$
+      replace: listen.owner = {{ roles_common_apache_running_user }}
+    - regexp: ^;listen.group\s=\snobody$
+      replace: listen.group = {{ roles_common_apache_running_user }}

@@ -1,0 +1,10 @@
+---
+symfony_env: dev
+composer_optimize_autoloader: no
+composer_no_dev: no
+roles_common_deploy_user: '{{ "root" if is_container is defined and is_container else "vagrant" }}'
+roles_common_home_directory: '{{ {"root": "/root", "jenkins": "/var/lib/jenkins"}[roles_common_deploy_user] | default("/home/" + roles_common_deploy_user) }}'
+ansistrano_deploy_to: /app
+roles_common_document_root: /app
+# ↓ For VirtualBox
+mysql_ingress: 10.0.2.2

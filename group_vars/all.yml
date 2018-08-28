@@ -1,0 +1,4 @@
+---
+ansistrano_shared_paths:
+  - vendor
+roles_common_apache_running_user: '{{ "nobody" if is_container is defined and is_container else "apache" }}'

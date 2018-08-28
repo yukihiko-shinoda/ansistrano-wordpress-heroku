@@ -1,0 +1,16 @@
+---
+- name: ANSISTRANO | HOOKS | Set permissions for Apache on application root for prevent error to Apache check whether .htaccess exist or not
+  file:
+    path: '{{ roles_common_home_directory }}'
+    state: directory
+    owner: '{{ roles_common_deploy_user }}'
+    group: '{{ roles_common_apache_running_user }}'
+    mode: 0710
+
+- name: ANSISTRANO | HOOKS | Ensure base directory and set SGID
+  file:
+    path: '{{ ansistrano_deploy_to }}'
+    state: directory
+    owner: '{{ roles_common_deploy_user }}'
+    group: '{{ roles_common_apache_running_user }}'
+    mode: 02775
